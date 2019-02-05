@@ -14,9 +14,14 @@ object Main extends Serializable {
       .getOrCreate()
 
     val data = generateData(spark)
-    new DenseRank(data, "key")
-      .generateRank()
+    val withRank = new DenseRank(data, "key").generateRank()
+
+    withRank
       .show(false)
+
+    withRank.foreach(println(_))
+
+    spark.close()
   }
 
   def generateData(spark: SparkSession): DataFrame = {

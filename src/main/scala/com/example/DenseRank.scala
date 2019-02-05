@@ -2,9 +2,9 @@ package com.example
 
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
-import org.apache.spark.sql.{DataFrame, Row}
-import org.apache.spark.sql.functions.{col, collect_list, spark_partition_id}
+import org.apache.spark.sql.functions.{col, spark_partition_id}
 import org.apache.spark.sql.types._
+import org.apache.spark.sql.{DataFrame, Row}
 
 class DenseRank(records: DataFrame, keyColumnName: String) extends Serializable {
 
@@ -20,7 +20,7 @@ class DenseRank(records: DataFrame, keyColumnName: String) extends Serializable 
     .withColumn(partitionNumCol, spark_partition_id())
 
 
-  private def calcPartOffset(): Array[Long] = {
+  private def calculatePartitionOffset(): Array[Long] = {
     val denseRankOffset = new CountNumberOfElements
 
     val partitionOffset = orderedRecords
@@ -34,34 +34,38 @@ class DenseRank(records: DataFrame, keyColumnName: String) extends Serializable 
     partitionOffset
   }
 
+  def generateRank(): DataFrame = {
+    val partitionOffset = calculatePartitionOffset()
+
+    orderedRecords.mapPartitions(rows => {
+      if (rows.isEmpty) {
+        rows
+      } else {
+        val partData = rows.toList.sortBy(_.getAs[Int](keyColumnName))
+
+        val firstRow = partData.head
+        val offset = partitionOffset(firstRow.getAs[Int](partitionNumCol))
+
+
+        val firstRowWithRank = appendColumn(firstRow, offset)
+
+        val result: Iterator[Row] = partData.tail
+          .scan(firstRowWithRank) { case (prev, curr) => {
+            val lastRank = prev.getAs[Long](rankCol)
+            val rank = if (prev.getAs[Int](keyColumnName) == curr.getAs[Int](keyColumnName)) {
+              lastRank
+            } else {
+              lastRank + 1L
+            }
+            appendColumn(curr, rank)
+          }
+          }.toIterator
+        result
+      }
+    })(resultEncoder)
+  }
 
   private def appendColumn(row: Row, value: Any): Row = {
     new GenericRowWithSchema(row.toSeq.toArray.init :+ value, resultSchema)
   }
-
-  def generateRank(): DataFrame = {
-    val partitionOffset = calcPartOffset()
-
-    orderedRecords.mapPartitions(rows => {
-      val partData = rows.toList.sortBy(_.getAs[Int](keyColumnName))
-      val firstRow = partData.head
-      val offset = partitionOffset(firstRow.getAs[Int](partitionNumCol))
-
-
-      val firstRowWithRank = appendColumn(firstRow, offset)
-
-      partData.tail
-        .scan(firstRowWithRank) { case (prev, curr) => {
-          val lastRank = prev.getAs[Long](rankCol)
-          val rank = if (prev.getAs[Int](keyColumnName) == curr.getAs[Int](keyColumnName)) {
-            lastRank
-          } else {
-            lastRank + 1L
-          }
-          appendColumn(curr, rank)
-        }
-        }.toIterator
-    })(resultEncoder)
-  }
-
 }
