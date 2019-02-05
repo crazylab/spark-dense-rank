@@ -1,4 +1,4 @@
-name := "scala-spark-project"
+name := "spark-dense-rank"
 
 lazy val commonSettings = Seq(
   version := "0.1",
@@ -9,7 +9,8 @@ lazy val commonSettings = Seq(
 
 libraryDependencies += "org.apache.spark" %% "spark-core" % "2.4.0" % "provided"
 libraryDependencies += "org.apache.spark" %% "spark-sql" % "2.4.0" % "provided"
-libraryDependencies += "org.apache.spark" %% "spark-streaming" % "2.4.0" % "provided"
+libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.5"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.5" % "test"
 
 
 
