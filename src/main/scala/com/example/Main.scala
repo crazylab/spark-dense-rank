@@ -1,21 +1,7 @@
 package com.example
 
-import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
-
-case class Foo() {
-  val resultSchema = StructType(
-    StructField("key", IntegerType) ::
-      StructField("value", StringType) ::
-      StructField("part", IntegerType) ::
-      StructField("rank", LongType) ::
-      Nil
-  )
-  val encoder = RowEncoder(resultSchema)
-}
-
-case class DataWithRank(data: Row, rank: Long)
 
 object Main extends Serializable {
 
